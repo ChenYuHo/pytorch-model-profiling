@@ -1,0 +1,4 @@
+[submodule "src/DeepLearningExamples"]
+	path = src/DeepLearningExamples
+	url = git@github.com:ChenYuHo/DeepLearningExamples.git
+	branch = bert-profiling

@@ -1,6 +1,2 @@
-kornia
-pandas-bokeh
-
-# install NVIDIA DALI
---extra-index-url https://developer.download.nvidia.com/compute/redist
-nvidia-dali-cuda110
+git+https://github.com/nvidia/apex.git@22.03 --global-option="--cpp_ext" --global-option="--cuda_ext"
+git+https://github.com/NVIDIA/dllogger#egg=dllogger

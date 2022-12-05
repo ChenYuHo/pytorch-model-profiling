@@ -139,6 +139,9 @@ if __name__ == "__main__":
             return False
 
     for m in [args.model] if args.model != "all" else models.list_models(models):
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+            torch.cuda.synchronize()
         print("Start profiling {}".format(m))
         model = get_model(m)
         loss = try_import(args.loss, "torch.nn.modules.loss")()
@@ -155,12 +158,6 @@ if __name__ == "__main__":
                                                                     data_path=args.data_path)
         t = time.time_ns()-t
         # Save reports and traces
-        if args.out is None:
-            file_prefix = "{}_{}".format(m, script_time_stamp)
-        else:
-            file_prefix = args.out
-        out = open("{}.profile.json".format(file_prefix), "w")
-
         if args.verbosity >= 1:
             forward = 0
             backward = 0
@@ -171,10 +168,15 @@ if __name__ == "__main__":
             print("total layer forward costs in profile:  {} ms ({:.2f}%)".format(forward / 1e6, forward/(forward+backward)*100))
             print("total layer backward costs in profile: {} ms ({:.2f}%)".format(backward / 1e6, backward/(forward+backward)*100))
             print("Finished profiling {} in {} ms".format(m, t / 1e6))
-        report = {"method": "pytorch_module_hooks", "host": socket.gethostname(),
-                  "report_date": script_time_stamp, "profiling_time": t, "unit": "ns",
-                  "args": args.__dict__, "iteration_costs": iteration_costs, "layer_costs": layer_costs}
-        json.dump(report, out, indent=4)
-        out.close()
-        if args.save_trace:
-            autograd_profiler.export_chrome_trace("{}.chrometrace.json".format(file_prefix))
+
+        if args.out is not None:
+            file_prefix = args.out
+            out = open("{}.profile.json".format(file_prefix), "w")
+
+            report = {"method": "pytorch_module_hooks", "host": socket.gethostname(),
+                      "report_date": script_time_stamp, "profiling_time": t, "unit": "ns",
+                      "args": args.__dict__, "iteration_costs": iteration_costs, "layer_costs": layer_costs}
+            json.dump(report, out, indent=4)
+            out.close()
+            if args.save_trace:
+                autograd_profiler.export_chrome_trace("{}.chrometrace.json".format(file_prefix))

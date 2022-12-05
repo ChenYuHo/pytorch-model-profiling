@@ -1,129 +1,61 @@
-# pytorch-gpu-data-science-project
-
-Repository containing scaffolding for a Python 3-based data science project with GPU acceleration using the [PyTorch](https://pytorch.org/) ecosystem. 
-
-## Creating a new project from this template
-
-Simply follow the [instructions](https://help.github.com/en/articles/creating-a-repository-from-a-template) to create a new project repository from this template.
-
-## Project organization
-
-Project organization is based on ideas from [_Good Enough Practices for Scientific Computing_](https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1005510).
-
-1. Put each project in its own directory, which is named after the project.
-2. Put external scripts or compiled programs in the `bin` directory.
-3. Put raw data and metadata in a `data` directory.
-4. Put text documents associated with the project in the `doc` directory.
-5. Put all Docker related files in the `docker` directory.
-6. Install the Conda environment into an `env` directory. 
-7. Put all notebooks in the `notebooks` directory.
-8. Put files generated during cleanup and analysis in a `results` directory.
-9. Put project source code in the `src` directory.
-10. Name all files to reflect their content or function.
-
-## Building the Conda environment
-
-After adding any necessary dependencies that should be downloaded via `conda` to the 
-`environment.yml` file and any dependencies that should be downloaded via `pip` to the 
-`requirements.txt` file you create the Conda environment in a sub-directory `./env`of your project 
-directory by running the following commands.
+## Cloning repo
 
 ```bash
-export ENV_PREFIX=$PWD/env
-mamba env create --prefix $ENV_PREFIX --file environment.yml --force
+git clone https://github.com/ChenYuHo/pytorch-model-profiling.git
+cd pytorch-model-profiling
+git submodule update --init # --depth 1
 ```
 
-Once the new environment has been created you can activate the environment with the following 
-command.
+## Building and activating the Conda environment (Assuming mamba is correctly installed)
 
-```bash
-conda activate $ENV_PREFIX
-```
-
-Note that the `ENV_PREFIX` directory is *not* under version control as it can always be re-created as 
-necessary.
-
-For your convenience these commands have been combined in a shell script `./bin/create-conda-env.sh`. 
-Running the shell script will create the Conda environment, activate the Conda environment, and build 
-JupyterLab with any additional extensions. The script should be run from the project root directory 
-as follows. 
+The script should be run from the project root directory as follows. 
 
 ```bash
 ./bin/create-conda-env.sh
+conda activate ./env
 ```
 
-### Ibex
+If you have multiple GPUs, select one to use for profiling, otherwise errors may occur
+```bash
+export NVIDIA_VISIBLE_DEVICES=0
+```
 
-The most efficient way to build Conda environments on Ibex is to launch the environment creation script 
-as a job on the debug partition via Slurm. For your convenience a Slurm job script 
-`./bin/create-conda-env.sbatch` is included. The script should be run from the project root directory 
-as follows.
+
+## Run torchvision CNN profilings
 
 ```bash
-sbatch ./bin/create-conda-env.sbatch
+cd src
+# assuming conda environment already activated
+python pytorch_module_hooks_profiler.py MODEL
 ```
 
-### Listing the full contents of the Conda environment
-
-The list of explicit dependencies for the project are listed in the `environment.yml` file. To see 
-the full lost of packages installed into the environment run the following command.
-
+check
 ```bash
-conda list --prefix $ENV_PREFIX
+python pytorch_module_hooks_profiler.py -h
 ```
+for more options.
 
-### Updating the Conda environment
 
-If you add (remove) dependencies to (from) the `environment.yml` file or the `requirements.txt` file 
-after the environment has already been created, then you can re-create the environment with the 
-following command.
-
+## Run BERT profilings (fine-tuning on SQuAD)
 ```bash
-$ mamba env create --prefix $ENV_PREFIX --file environment.yml --force
+cd src/DeepLearningExamples/PyTorch/LanguageModeling/BERT
+# Follow README.md to prepare checkpoint and training data in $base_dir such that
+# $base_dir/pytorch/bert_uncased.pt
+# $base_dir/squad/v1.1/train-v1.1.json
+# $base_dir/google_pretrained_weights/uncased_L-24_H-1024_A-16/vocab.txt
+# are available. Update run_profiling.sh accordingly.
+./scscripts/run_profiling.sh
 ```
+Reference results can be found at:
 
-## Installing the NVIDIA CUDA Compiler (NVCC) (Optional)
+A100: https://github.com/ChenYuHo/DeepLearningExamples/tree/bert-profiling/PyTorch/LanguageModeling/BERT#fine-tuning-nvidia-dgx-a100-8x-a100-80gb
 
-Installing the NVIDIA CUDA Toolkit manually is only required if your project needs to use the `nvcc` compiler. 
-Note that even if you have not written any custom CUDA code that needs to be compiled with `nvcc`, if your project 
-uses packages that include custom CUDA extensions for PyTorch then you will need `nvcc` installed in order to build these packages.
+V100: https://github.com/ChenYuHo/DeepLearningExamples/tree/bert-profiling/PyTorch/LanguageModeling/BERT#fine-tuning-nvidia-dgx-1-with-32g
 
-If you don't need `nvcc`, then you can skip this section as `conda` will install a `cudatoolkit` package 
-which includes all the necessary runtime CUDA dependencies (but not the `nvcc` compiler).
+## Result parsing
 
-### Workstation
-
-You will need to have the [appropriate version](https://developer.nvidia.com/cuda-toolkit-archive) 
-of the NVIDIA CUDA Toolkit installed on your workstation. If using the most recent versionf of PyTorch, then you 
-should install [NVIDIA CUDA Toolkit 11.1](https://developer.nvidia.com/cuda-11.1.1-download-archive) 
-[(documentation)](https://docs.nvidia.com/cuda/archive/11.1.1/).
-
-After installing the appropriate version of the NVIDIA CUDA Toolkit you will need to set the 
-following environment variables.
-
+`get_model_size_and_fp_bp_median.py` extracts model size, median of forward pass, backward pass, and weight update times of every layer. The optional BUCKET_SIZE_MB groups small layers into one layer, so every "bucket" is less than BUCKET_SIZE_MB (best-effort)
 ```bash
-$ export CUDA_HOME=/usr/local/cuda-11.1
-$ export PATH=$CUDA_HOME/bin:$PATH
-$ export LD_LIBRARY_PATH=$CUDA_HOME/lib64:$LD_LIBRARY_PATH
+python get_model_size_and_fp_bp_median.py [TRACE_JSON_PATH] [BUCKET_SIZE_MB]
+
 ```
-
-### Ibex
-
-Ibex users do not neet to install NVIDIA CUDA Toolkit as the relevant versions have already been 
-made available on Ibex by the Ibex Systems team. Users simply need to load the appropriate version 
-using the `module` tool. 
-
-```bash
-$ module load cuda/11.1.1
-```
-
-## Using Docker
-
-In order to build Docker images for your project and run containers with GPU acceleration you will 
-need to install 
-[Docker](https://docs.docker.com/install/linux/docker-ce/ubuntu/), 
-[Docker Compose](https://docs.docker.com/compose/install/) and the 
-[NVIDIA Docker runtime](https://github.com/NVIDIA/nvidia-docker).
-
-Detailed instructions for using Docker to build and image and launch containers can be found in 
-the `docker/README.md`.

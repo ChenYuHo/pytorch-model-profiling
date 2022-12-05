@@ -8,8 +8,9 @@ channels:
 
 dependencies:
   - boto3
-  - cudatoolkit=11.3
-  - cudatoolkit-dev=11.3
+  - cuda-libraries-dev=11.7
+  - cuda-profiler-api
+  - cudatoolkit=11.7
   - cxxfilt
   - packaging
   - pip
@@ -17,9 +18,9 @@ dependencies:
     - -r requirements.txt
   - pytest
   - python=3
-  - pytorch=1.12.1
+  - pytorch=1.13.0
   - pyyaml
   - setuptools
   - six
-  - torchvision=0.13.1
+  - torchvision=0.14.0
   - tqdm
